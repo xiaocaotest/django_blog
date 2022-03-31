@@ -1,5 +1,10 @@
+from datetime import datetime
+from django.core.cache import cache
+
 from django.db import models
-from django.contrib.auth.models import User
+from django.db.models.signals import post_delete, post_save
+
+from user_info.models import UserInfo
 
 
 class Category(models.Model):
@@ -69,7 +74,7 @@ class Post(models.Model):
     # django.contrib.auth 是 Django 内置的应用，专门用于处理网站用户的注册、登录等流程，User 是 Django 为我们已经写好的用户模型。
     # 这里我们通过 ForeignKey 把文章和 User 关联了起来。
     # 因为我们规定一篇文章只能有一个作者，而一个作者可能会写多篇文章，因此这是一对多的关联关系，和 Category 类似。
-    author = models.ForeignKey(User, verbose_name="作者", on_delete=models.CASCADE)
+    author = models.ForeignKey(UserInfo, verbose_name="作者", on_delete=models.CASCADE)
 
     # 新增 views 字段记录阅读量
     views = models.PositiveIntegerField(default=0, editable=False)
@@ -78,3 +83,11 @@ class Post(models.Model):
         verbose_name = "文章"
         verbose_name_plural = verbose_name
         ordering = ["-created_time"]
+
+
+def change_post_updated_at(**kwargs):
+    cache.set("post_updated_at", datetime.utcnow())
+
+
+post_save.connect(receiver=change_post_updated_at, sender=Post)
+post_delete.connect(receiver=change_post_updated_at, sender=Post)

@@ -1,9 +1,32 @@
-from rest_framework import mixins, viewsets
-from rest_framework.permissions import AllowAny
+from rest_framework import mixins, viewsets, permissions
+from rest_framework_extensions.cache.decorators import cache_response
+from rest_framework.pagination import LimitOffsetPagination
+from rest_framework_extensions.key_constructor.bits import (
+    ListSqlQueryKeyBit,
+    PaginationKeyBit,
+    RetrieveSqlQueryKeyBit,
+)
+from rest_framework_extensions.key_constructor.constructors import DefaultKeyConstructor
 
+from .utils import UpdatedAtKeyBit
 from .models import Category, Post, Tag
 from .serializers import (
     CategorySerializer, PostListSerializer, TagSerializer)
+
+
+class PostUpdatedAtKeyBit(UpdatedAtKeyBit):
+    key = "post_updated_at"
+
+
+class PostListKeyConstructor(DefaultKeyConstructor):
+    list_sql = ListSqlQueryKeyBit()
+    pagination = PaginationKeyBit()
+    updated_at = PostUpdatedAtKeyBit()
+
+
+class PostObjectKeyConstructor(DefaultKeyConstructor):
+    retrieve_sql = RetrieveSqlQueryKeyBit()
+    updated_at = PostUpdatedAtKeyBit()
 
 
 class PostViewSet(
@@ -14,50 +37,32 @@ class PostViewSet(
     viewsets.GenericViewSet
 ):
     """
-    博客文章视图集
-
-    list:
-    返回博客文章列表
-
-    retrieve:
-    返回博客文章详情
-
-    list_comments:
-    返回博客文章下的评论列表
+    博客接口
     """
 
     serializer_class = PostListSerializer
     queryset = Post.objects.all()
-    permission_classes = [AllowAny]
-    # serializer_class_table = {
-    #     "list": PostListSerializer,
-    #     "retrieve": PostRetrieveSerializer,
-    # }
-    #
-    # def get_serializer_class(self):
-    #     return self.serializer_class_table.get(
-    #         self.action, super().get_serializer_class()
-    #     )
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = LimitOffsetPagination
 
-    # def create(self, request, *args, **kwargs):
-    #     return super().create(request, *args, **kwargs)
+    @cache_response(timeout=5 * 60, key_func=PostListKeyConstructor())
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
-    # def list(self, request, *args, **kwargs):
-    #     return super().list(request, *args, **kwargs)
-    #
-    # def retrieve(self, request, *args, **kwargs):
-    #     return super().retrieve(request, *args, **kwargs)
+    @cache_response(timeout=5 * 60, key_func=PostObjectKeyConstructor())
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
 
 
-class CategoryViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+class CategoryViewSet(mixins.CreateModelMixin,
+                      mixins.ListModelMixin,
+                      viewsets.GenericViewSet):
     """
-    博客文章分类视图集
-
-    list:
-    返回博客文章分类列表
+    分类接口
     """
 
     serializer_class = CategorySerializer
+    permission_classes = [permissions.IsAuthenticated]
     # 关闭分页
     pagination_class = None
 
@@ -65,15 +70,15 @@ class CategoryViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         return Category.objects.all().order_by("name")
 
 
-class TagViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+class TagViewSet(mixins.CreateModelMixin,
+                 mixins.ListModelMixin,
+                 viewsets.GenericViewSet):
     """
-    博客文章标签视图集
-
-    list:
-    返回博客文章标签列表
+    标签接口
     """
 
     serializer_class = TagSerializer
+    permission_classes = [permissions.IsAuthenticated]
     # 关闭分页
     pagination_class = None
 
