@@ -14,6 +14,7 @@ from .serializers import (
     CategorySerializer, PostListSerializer, TagSerializer)
 
 
+# Post缓存设置
 class PostUpdatedAtKeyBit(UpdatedAtKeyBit):
     key = "post_updated_at"
 
@@ -37,7 +38,22 @@ class PostViewSet(
     viewsets.GenericViewSet
 ):
     """
-    博客接口
+    博客文章视图集
+
+    list:
+    返回博客文章列表
+
+    retrieve:
+    返回博客文章详情
+
+    create:
+    创建文章
+
+    update:
+    修改文章
+
+    partial_update:
+    修改文章部分内容
     """
 
     serializer_class = PostListSerializer
