@@ -1,0 +1,4 @@
+Django==4.0.4
+djangorestframework==3.13.1
+drf_writable_nested==0.6.3
+drf_yasg==1.20.0
